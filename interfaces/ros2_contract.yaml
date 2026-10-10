@@ -1,0 +1,54 @@
+# The ROS 2 interface every simulator (and the real robot) must expose.
+# Autonomy code depends only on this contract, so swapping Gazebo for Isaac,
+# Unity or Unreal, or sim for hardware, requires no changes downstream.
+#
+# Target: ROS 2 Jazzy (LTS). Frames follow REP-103 / REP-105.
+
+frames:
+  world: map
+  odom: odom
+  base: base_link
+  footprint: base_footprint
+  camera: front_camera_link
+  camera_optical: front_camera_optical_frame
+
+publishers:   # simulator -> autonomy stack
+  - topic: /front_camera/image_raw
+    type: sensor_msgs/msg/Image
+    frame_id: front_camera_optical_frame
+    encoding: rgb8
+    rate_hz: 30
+  - topic: /front_camera/camera_info
+    type: sensor_msgs/msg/CameraInfo
+    frame_id: front_camera_optical_frame
+    rate_hz: 30
+  - topic: /front_camera/depth/image_raw
+    type: sensor_msgs/msg/Image
+    frame_id: front_camera_optical_frame
+    encoding: 32FC1   # meters
+    rate_hz: 30
+  - topic: /odom
+    type: nav_msgs/msg/Odometry
+    frame_id: odom
+    child_frame_id: base_link
+    rate_hz: 50
+  - topic: /tf
+    type: tf2_msgs/msg/TFMessage
+    note: odom -> base_link from the simulator; static frames from robot_state_publisher
+  - topic: /clock
+    type: rosgraph_msgs/msg/Clock
+    note: all nodes run with use_sim_time=true
+
+subscribers:  # autonomy stack -> simulator
+  - topic: /cmd_vel
+    type: geometry_msgs/msg/TwistStamped   # Jazzy's Nav2 default; Twist on older stacks
+    frame_id: base_link
+
+# Ground truth for evaluation only. Never consumed by the autonomy stack.
+ground_truth:
+  - topic: /ground_truth/pose
+    type: geometry_msgs/msg/PoseStamped
+    frame_id: map
+  - topic: /ground_truth/instances
+    type: sensor_msgs/msg/Image
+    encoding: 16UC1   # instance ids, same convention as the dataset's instances/

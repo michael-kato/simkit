@@ -1,0 +1,64 @@
+# Example scenario.
+# Positions are meters in the canonical frame, ROS REP-103 (x forward, y left, z up).
+# Angles are degrees. Any number can be a fixed value or a [min, max] range
+# that is sampled for every frame.
+name: warehouse_pallets
+seed: 42
+frames: 500
+
+assets:
+  - name: pallet_wood
+    label: pallet
+    source: assets/pallet_wood.usd
+    count: [1, 4]
+    placement:
+      x: [3.0, 10.0]
+      y: [-3.0, 3.0]
+      z: 0.0
+      yaw_deg: [0, 360]
+
+  - name: forklift
+    label: forklift
+    source: assets/forklift.usd
+    count: [0, 1]
+    placement: {x: [5.0, 12.0], y: [-4.0, 4.0], z: 0.0, yaw_deg: [0, 360]}
+
+  # Unlabeled clutter ("distractors"): teaches the model what to ignore.
+  - name: clutter_cube
+    source: primitive:cube
+    count: [0, 8]
+    scale: [0.1, 0.6]
+    placement:
+      x: [2.0, 12.0]
+      y: [-4.0, 4.0]
+      z: [0.0, 2.5]
+      roll_deg: [0, 360]
+      pitch_deg: [0, 360]
+      yaw_deg: [0, 360]
+
+camera:
+  name: front_camera
+  width: 640
+  height: 480
+  horizontal_fov_deg: 87  # e.g. a RealSense D435 color camera
+  placement:
+    x: 0.0
+    y: 0.0
+    z: [0.55, 0.65]
+    roll_deg: [-2, 2]
+    pitch_deg: [3, 7]  # tipped slightly down
+    yaw_deg: [-2, 2]
+
+lights:
+  - type: point  # ceiling light
+    intensity: [800, 3000]  # lumens
+    color_temperature_k: [3500, 5000]
+    placement: {x: [0.0, 12.0], y: [-5.0, 5.0], z: 6.0}
+
+  - type: sun  # daylight through open bay doors
+    intensity: [0, 20000]  # lux
+    color_temperature_k: [5000, 6500]
+    azimuth_deg: [0, 360]
+    elevation_deg: [15, 75]
+
+outputs: [rgb, depth, instance_segmentation, bbox_2d]
