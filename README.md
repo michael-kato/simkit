@@ -36,10 +36,11 @@ be swapped later without rewriting the pipeline.
 
 | Path | What it defines |
 |---|---|
-| `src/simkit/frames.py` | Canonical frame (ROS REP-103) and tested conversions to every engine's axes, handedness and units, plus camera optical-frame math |
-| `src/simkit/scenario.py` | Scenario schema (assets, placement, camera, lights) and deterministic per-frame sampling |
-| `src/simkit/adapters/` | `EngineAdapter` contract, a working `mock` engine, and documented stubs for each real engine |
-| `src/simkit/dataset.py` | One on-disk dataset layout + COCO annotations, whatever engine made the data |
+| `source/frames.py` | Canonical frame (ROS REP-103) and tested conversions to every engine's axes, handedness and units, plus camera optical-frame math |
+| `source/scenario.py` | Scenario schema (assets, placement, camera, lights) and deterministic per-frame sampling |
+| `source/adapters/` | `EngineAdapter` contract and one adapter per engine (`remote.py`: socket protocol for engines that host simkit in-process) |
+| `source/dataset.py` | One on-disk dataset layout + COCO annotations, whatever engine made the data |
+| `unity/`, `unreal/` | Engine-side projects that host simkit's server for those adapters |
 | `robot/robot.urdf` | Robot description: the single source of truth for the robot body |
 | `interfaces/ros2_contract.yaml` | ROS 2 topics, message types and TF frames the sim must provide |
 | `scenarios/` | Example scenarios |
@@ -70,18 +71,26 @@ pipeline (sampling → projection → labels → dataset) can be tested in CI.
 
 ## Engine status
 
-| Engine | Status |
-|---|---|
-| mock | ✅ working |
-| Gazebo Harmonic | 🧩 stub with implementation plan |
-| Isaac Sim | 🧩 stub with implementation plan |
-| Unity | 🧩 stub with implementation plan |
-| Unreal 5 | 🧩 stub with implementation plan |
-| Blender / BlenderProc | 🧩 stub with implementation plan |
+| Engine | Status | Needs |
+|---|---|---|
+| mock | ✅ working | nothing |
+| Gazebo Jetty (gz-sim 10) | ✅ working | `gz-jetty` (its `gz.transport` / `gz.msgs` Python bindings) |
+| Unity 6.6 (URP) | ✅ working | the player built from `unity/` (below); `$SIMKIT_UNITY_PLAYER` to override its path |
+| Unreal 5.8 | ✅ working | `$SIMKIT_UNREAL_EDITOR` pointing at `UnrealEditor`; runs the editor headless on `unreal/` |
+| Isaac Sim | 🧩 stub with implementation plan | |
+| Blender / BlenderProc | 🧩 stub with implementation plan | |
+
+Build the Unity player once (and after changing `unity/`):
+
+```bash
+Unity -batchmode -quit -projectPath unity -executeMethod Simkit.Editor.SimkitBuild.Linux
+```
+
+Engines load meshes from a sibling export of each asset's `source`
+(`pallet.usd` → `pallet.glb`): Gazebo and Unity take glTF, Unreal takes USD first.
 
 ## Roadmap
 
-- [ ] First real adapter (Gazebo or Isaac, whichever the project commits to)
 - [ ] ROS 2 package: `robot_state_publisher` launch + contract conformance test node
 - [ ] rosbag2 (MCAP) recording of closed-loop runs
 - [ ] Docker images (ROS 2 Jazzy + Gazebo; Isaac Sim container) and cloud GPU scripts

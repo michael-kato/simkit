@@ -5,3 +5,7 @@ __pycache__/
 data/
 build/
 dist/
+logs/
+scenarios/*/assets/
+scenarios/*/scene.usda
+scenarios/*/scene_preview.png

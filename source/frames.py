@@ -48,6 +48,11 @@ UNREAL = Convention("unreal", np.diag([1.0, -1.0, 1.0]), scale=100.0)
 
 CONVENTIONS = {convention.name: convention for convention in (ROS, GAZEBO, ISAAC, BLENDER, UNITY, UNREAL)}
 
+# glTF asset files (not an engine): the plain Y-up rotation of a Z-up asset,
+# gltf = (x, z, -y), as Blender and most DCC tools export them. So a .glb
+# matches its sibling .usd point for point.
+GLTF = Convention("gltf", np.array([[1, 0, 0], [0, 0, 1], [0, -1, 0]], dtype=float))
+
 # Rotation from a ROS camera body frame (x forward, y left, z up) to the ROS
 # optical frame (x right, y down, z forward). Columns are optical axes in body.
 R_BODY_OPTICAL = np.array([[0, 0, 1], [-1, 0, 0], [0, -1, 0]], dtype=float)

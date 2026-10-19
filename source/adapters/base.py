@@ -1,9 +1,19 @@
-"""The contract every engine adapter implements."""
+"""The contract every engine adapter implements, plus helpers adapters share."""
 
+import os
+import signal
+import subprocess
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from datetime import datetime
+from pathlib import Path
 
 import numpy as np
+
+PRIMITIVE_CUBE = "primitive:cube"  # a 1 m cube centered on its pose, times ObjectInstance.scale
+# Engines without physical light units get intensities relative to this
+# illuminance: a sun of REFERENCE_LUX, or a lamp giving REFERENCE_LUX at 1 m, has intensity 1.
+REFERENCE_LUX = 1000.0
 
 
 @dataclass
@@ -70,3 +80,56 @@ class EngineAdapter(ABC):
 
     def __exit__(self, *exc):
         self.close()
+
+
+def resolve_asset(source, extensions):
+    """Return ``source`` itself for primitives, otherwise the absolute path of
+    its sibling export with the first of ``extensions`` that exists
+    (``pallet.usd`` -> ``pallet.glb``). Relative paths are from the working directory."""
+    if source.startswith("primitive:"):
+        if source != PRIMITIVE_CUBE:
+            raise ValueError(f"unknown primitive {source!r}; only {PRIMITIVE_CUBE!r} exists")
+        return source
+    for extension in extensions:
+        path = Path(source).with_suffix(extension).resolve()
+        if path.is_file():
+            return str(path)
+    raise FileNotFoundError(f"no {'/'.join(extensions)} export next to {source}")
+
+
+def relative_intensity(light):
+    """Unitless intensity for engines without physical light units (see REFERENCE_LUX).
+
+    Point and spot lights are converted from lumens to candela, so an engine
+    with inverse-square falloff lights a surface 1 m away like the real lamp would.
+    """
+    if light.type == "sun":
+        return light.intensity / REFERENCE_LUX
+    if light.type == "point":
+        return light.intensity / (4 * np.pi) / REFERENCE_LUX
+    if light.type == "spot":
+        solid_angle = 2 * np.pi * (1 - np.cos(np.radians(light.cone_angle_deg) / 2))
+        return light.intensity / solid_angle / REFERENCE_LUX
+    raise ValueError(f"{light.type} lights need an engine with physical light units")
+
+
+def launch_engine(command, engine_name):
+    """Start an engine process in its own process group, logging to logs/<run>/<engine>.log."""
+    log_path = Path("logs") / datetime.now().strftime("%Y-%m-%d_%H%M%S") / f"{engine_name}.log"
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    with log_path.open("w") as log_file:
+        process = subprocess.Popen(command, stdout=log_file, stderr=subprocess.STDOUT, start_new_session=True)
+    process.log_path = log_path
+    return process
+
+
+def stop_engine(process, timeout_s=10):
+    """Stop the whole process group: engines often spawn helper processes."""
+    if process.poll() is not None:
+        return
+    os.killpg(process.pid, signal.SIGINT)
+    try:
+        process.wait(timeout_s)
+    except subprocess.TimeoutExpired:
+        os.killpg(process.pid, signal.SIGKILL)
+        process.wait()
