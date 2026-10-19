@@ -1,0 +1,60 @@
+# A fixed yard layout built from Objaverse models (see build_scene.py, which
+# also makes the assets/ this file points to). Only the robot camera and the
+# lights change from frame to frame.
+# Canonical frame: x forward, y left, z up, meters. Assets sit on their bottom center.
+name: objaverse_yard
+seed: 3
+frames: 8
+
+assets:
+  - {name: yard, source: scenarios/objaverse_yard/assets/yard/yard.usd, background: true, placement: {x: 0, y: 0, z: 0}}
+
+  # Pallet with a crate, pallet with two drums.
+  - {name: wooden_pallet, label: pallet, source: scenarios/objaverse_yard/assets/wooden_pallet/wooden_pallet.usd, placement: {x: 4.2, y: -1.4, z: 0, yaw_deg: 8}}
+  - {name: crate_large, label: crate, source: scenarios/objaverse_yard/assets/crate_large/crate_large.usd, placement: {x: 4.2, y: -1.4, z: 0.144, yaw_deg: 8}}
+  - {name: wooden_pallet, label: pallet, source: scenarios/objaverse_yard/assets/wooden_pallet/wooden_pallet.usd, placement: {x: 5.6, y: 1.1, z: 0, yaw_deg: -6}}
+  - {name: barrel_hazard, label: barrel, source: scenarios/objaverse_yard/assets/barrel_hazard/barrel_hazard.usd, placement: {x: 5.57, y: 1.42, z: 0.144, yaw_deg: 30}}
+  - {name: barrel_rusty, label: barrel, source: scenarios/objaverse_yard/assets/barrel_rusty/barrel_rusty.usd, placement: {x: 5.63, y: 0.78, z: 0.144, yaw_deg: -50}}
+
+  # Forklifts.
+  - {name: forklift_orange, label: forklift, source: scenarios/objaverse_yard/assets/forklift_orange/forklift_orange.usd, placement: {x: 9.0, y: -3.4, z: 0, yaw_deg: 155}}
+  - {name: forklift_rusty, label: forklift, source: scenarios/objaverse_yard/assets/forklift_rusty/forklift_rusty.usd, placement: {x: 10.4, y: 3.5, z: 0, yaw_deg: 70}}
+
+  # Crates against the back wall (x = 13), one stacked.
+  - {name: crate_grey, label: crate, source: scenarios/objaverse_yard/assets/crate_grey/crate_grey.usd, placement: {x: 12.4, y: 0.2, z: 0, yaw_deg: 3}}
+  - {name: crate_grey, label: crate, source: scenarios/objaverse_yard/assets/crate_grey/crate_grey.usd, placement: {x: 12.4, y: 1.0, z: 0, yaw_deg: -4}}
+  - {name: crate_braced, label: crate, source: scenarios/objaverse_yard/assets/crate_braced/crate_braced.usd, placement: {x: 12.4, y: 0.2, z: 0.7, yaw_deg: 15}}
+
+  # Along the left wall (y = 6.2).
+  - {name: barrel_wooden, label: barrel, source: scenarios/objaverse_yard/assets/barrel_wooden/barrel_wooden.usd, placement: {x: 7.4, y: 5.5, z: 0}}
+  - {name: barrel_wooden, label: barrel, source: scenarios/objaverse_yard/assets/barrel_wooden/barrel_wooden.usd, placement: {x: 8.2, y: 5.55, z: 0, yaw_deg: 40}}
+  - {name: fire_extinguisher, label: fire_extinguisher, source: scenarios/objaverse_yard/assets/fire_extinguisher/fire_extinguisher.usd, placement: {x: 9.6, y: 6.05, z: 0, yaw_deg: -90}}
+  - {name: step_ladder, source: scenarios/objaverse_yard/assets/step_ladder/step_ladder.usd, placement: {x: 11.2, y: 5.55, z: 0}}
+  - {name: recycling_bin, source: scenarios/objaverse_yard/assets/recycling_bin/recycling_bin.usd, placement: {x: 12.4, y: 4.9, z: 0, yaw_deg: 180}}
+
+  # Loose items on the floor.
+  - {name: fire_extinguisher, label: fire_extinguisher, source: scenarios/objaverse_yard/assets/fire_extinguisher/fire_extinguisher.usd, placement: {x: 12.85, y: -2.0, z: 0, yaw_deg: 180}}
+  - {name: traffic_cone, label: traffic_cone, source: scenarios/objaverse_yard/assets/traffic_cone/traffic_cone.usd, placement: {x: 3.0, y: 2.4, z: 0}}
+  - {name: traffic_cone, label: traffic_cone, source: scenarios/objaverse_yard/assets/traffic_cone/traffic_cone.usd, placement: {x: 3.7, y: 2.9, z: 0}}
+  - {name: traffic_cone, label: traffic_cone, source: scenarios/objaverse_yard/assets/traffic_cone/traffic_cone.usd, placement: {x: 2.7, y: -2.9, z: 0}}
+  - {name: metal_bucket, label: bucket, source: scenarios/objaverse_yard/assets/metal_bucket/metal_bucket.usd, placement: {x: 6.6, y: -0.6, z: 0}}
+  - {name: plastic_chair, source: scenarios/objaverse_yard/assets/plastic_chair/plastic_chair.usd, placement: {x: 6.8, y: 3.3, z: 0, yaw_deg: 200}}
+  - {name: wooden_bucket, source: scenarios/objaverse_yard/assets/wooden_bucket/wooden_bucket.usd, placement: {x: 4.8, y: 3.0, z: 0}}
+
+camera:
+  name: front_camera
+  width: 640
+  height: 480
+  horizontal_fov_deg: 87  # RealSense D435 color camera
+  placement: {x: [0.0, 1.5], y: [-1.0, 1.0], z: [0.55, 0.65], roll_deg: [-1, 1], pitch_deg: [2, 6], yaw_deg: [-20, 20]}
+
+lights:
+  - type: sun
+    intensity: [800, 1500]  # lux; dim, so engines without exposure control stay in range
+    color_temperature_k: [5000, 6500]
+    azimuth_deg: [120, 240]  # from behind the camera
+    elevation_deg: [35, 65]
+  - type: point
+    intensity: [30000, 60000]  # lumens
+    color_temperature_k: [3500, 4500]
+    placement: {x: [5.0, 9.0], y: [-2.0, 2.0], z: 3.5}
