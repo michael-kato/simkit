@@ -45,6 +45,7 @@ be swapped later without rewriting the pipeline.
 | `interfaces/ros2_contract.yaml` | ROS 2 topics, message types and TF frames the sim must provide |
 | `scenarios/` | Example scenarios |
 | `docs/engines.md` | Conventions table, engine trade-offs, how to add an engine |
+| `docs/state/` | State map: the whole pipeline as diagrams, each page tied to the source it describes |
 
 ## Quickstart
 
