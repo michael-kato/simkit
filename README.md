@@ -24,7 +24,7 @@ flowchart LR
 ```
 
 All randomness happens in Python, so frame *N* is the same scene in every
-engine. Per-stage diagrams: [docs/state](docs/state/README.md).
+engine.
 
 ## Install
 
@@ -83,11 +83,6 @@ each file and names it after what a local vision model sees. That made it
 possible to pick pallets, crates, barrels and forklifts out of thousands of
 unnamed files. `build_scene.py` then scales them to real size and exports USD
 with glTF copies.
-
-## Docs
-
-- [docs/state](docs/state/README.md): how the pipeline fits together, one page per stage
-- [docs/engines.md](docs/engines.md): coordinate conventions per engine, adding an engine
 
 <details>
 <summary>Design rules</summary>

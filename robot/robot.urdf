@@ -2,7 +2,7 @@
 <!--
   Placeholder differential-drive robot with an RGB-D camera.
   This URDF is the single source of truth for the robot body. Engine formats
-  are generated from it (see docs/engines.md); never hand-edit the outputs.
+  are generated from it; never hand-edit the outputs.
   Frame names here must match interfaces/ros2_contract.yaml.
 -->
 <robot name="simkit_bot">
