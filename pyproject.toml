@@ -24,8 +24,9 @@ dev = ["pytest>=8"]
 [project.scripts]
 simkit = "simkit.cli:main"
 
-[tool.setuptools.packages.find]
-where = ["src"]
+[tool.setuptools]
+package-dir = { simkit = "source" }
+packages = ["simkit", "simkit.adapters"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
