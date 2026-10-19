@@ -50,9 +50,9 @@ class MockAdapter(EngineAdapter):
 
         # Paint far-to-near so nearer objects cover farther ones.
         for i in np.argsort(-z):
-            if z[i] <= 0.05:  # behind or touching the camera
-                continue
             obj = frame.objects[i]
+            if z[i] <= 0.05 or obj.instance_id == 0:  # behind or touching the camera, or background
+                continue
             half = 0.5 * K[0, 0] * OBJECT_SIZE_M * obj.scale / z[i]
             left, right = int(max(uv[i, 0] - half, 0)), int(min(uv[i, 0] + half, w))
             top, bottom = int(max(uv[i, 1] - half, 0)), int(min(uv[i, 1] + half, h))

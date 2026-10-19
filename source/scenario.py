@@ -66,6 +66,8 @@ class AssetSpec(BaseModel):
     ``name`` identifies the model ("pallet_wood"). ``label`` is the class the
     detector learns ("pallet"); several assets can share a label. Assets with no
     label are unannotated clutter ("distractors") that teach the model what to ignore.
+    ``background`` assets (floors, walls) are rendered but stay background
+    (instance id 0) in instance masks.
     """
 
     name: str
@@ -74,6 +76,13 @@ class AssetSpec(BaseModel):
     count: CountOrRange = 1
     scale: NumberOrRange = 1.0
     placement: Placement
+    background: bool = False
+
+    @model_validator(mode="after")
+    def check_background_unlabeled(self):
+        if self.background and self.label is not None:
+            raise ValueError(f"background asset {self.name!r} cannot have a label")
+        return self
 
 
 class CameraSpec(BaseModel):
@@ -144,7 +153,7 @@ class Scenario(BaseModel):
 
 @dataclass
 class ObjectInstance:
-    instance_id: int  # 1-based; 0 means background in instance masks
+    instance_id: int  # 1-based; 0 for background assets, matching background in instance masks
     asset_name: str
     label: str | None  # None for unlabeled assets (distractors)
     source: str
@@ -254,11 +263,14 @@ def sample_frame(scenario, index):
     rng = np.random.default_rng([scenario.seed, index])
 
     objects = []
+    instance_count = 0
     for asset in scenario.assets:
         for _ in range(sample_count(rng, asset.count)):
             position, quaternion = sample_pose(rng, asset.placement)
+            if not asset.background:
+                instance_count += 1
             objects.append(ObjectInstance(
-                instance_id=len(objects) + 1,
+                instance_id=0 if asset.background else instance_count,
                 asset_name=asset.name,
                 label=asset.label,
                 source=asset.source,
