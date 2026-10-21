@@ -104,6 +104,6 @@ data/yard/
 
 - Run simkit from the repo root: asset paths resolve from the working directory.
 - Rebuild the Unity player after changing anything in `unity/`; a stale player runs old code silently.
-- Colors and brightness differ between engines (Unreal adds no ambient light); geometry, masks and depth match.
+- Colors and brightness differ slightly between engines; geometry, masks and depth match.
 - Area lights work only in Unreal. Gazebo masks hold at most 255 objects per frame.
 - A failed run still writes `annotations.json` for the frames it finished; check the exit code.
