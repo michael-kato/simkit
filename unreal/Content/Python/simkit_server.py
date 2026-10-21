@@ -8,7 +8,8 @@ source/adapters/remote.py to one client from a Slate tick callback (so all
 in Unreal axes and centimeters.
 
 Captures, from SceneCapture2D components sharing one pose:
-  rgb        final color, LDR, sRGB
+  rgb        linear scene color (radiance in nits, before post-processing);
+             the adapter exposes and encodes it like the other engines
   depth      scene depth (cm along the view axis)
   instances  base color, with every object's materials swapped for a flat
              material whose color encodes its instance id (R low byte, G high byte)
@@ -17,8 +18,8 @@ What UE 5.8 does in this setup (editor world, -RenderOffscreen), checked by expe
   * a new level comes from a template with a floor, sky and lights;
   * importing a USD or glTF file also places its contents in the level, and
     its textures render as placeholders until their async build finishes;
-  * scene captures ignore exposure settings and render at exposure 1, while
-    color grading still applies, so exposure is set as a color gain;
+  * scene captures ignore exposure settings, and their tonemapper keeps a toe
+    even with the tone curve off, hence linear scene color for RGB;
   * post-process materials have no effect on scene captures, hence base-color
     ids rather than custom stencil.
 """
@@ -32,9 +33,13 @@ import unreal
 
 CONTENT_DIR = "/Game/Simkit"
 CUBE = "/Engine/BasicShapes/Cube.Cube"  # 100 cm, centered
+SPHERE = "/Engine/BasicShapes/Sphere.Sphere"  # 100 cm across
+# The sky: a uniform sphere far enough to read as background (past the
+# adapter's 10 km depth cutoff), captured by a SkyLight for ambient light.
+SKY_RADIUS_CM = 2_000_000
 LENGTHS = struct.Struct("<II")
 TARGET_FORMATS = {
-    "rgb": unreal.TextureRenderTargetFormat.RTF_RGBA8_SRGB,
+    "rgb": unreal.TextureRenderTargetFormat.RTF_RGBA16F,
     "depth": unreal.TextureRenderTargetFormat.RTF_RGBA32F,  # raw reads reject single-channel R32F
     "instances": unreal.TextureRenderTargetFormat.RTF_RGBA8,  # linear, so id bytes come back exact
 }
@@ -54,8 +59,10 @@ class SimkitServer:
         self.lights = []
         self.size = None
         self.id_material = id_material()
+        self.sky_material, self.sky_light = self._sky()
+        self.ambient_nits = None
         self.captures = {
-            "rgb": self._capture_component(unreal.SceneCaptureSource.SCS_FINAL_COLOR_LDR),
+            "rgb": self._capture_component(unreal.SceneCaptureSource.SCS_SCENE_COLOR_HDR),
             "depth": self._capture_component(unreal.SceneCaptureSource.SCS_SCENE_DEPTH),
             "instances": self._capture_component(unreal.SceneCaptureSource.SCS_BASE_COLOR),
         }
@@ -125,8 +132,25 @@ class SimkitServer:
             if size != self.size:
                 target = unreal.RenderingLibrary.create_render_target2d(self.world, size[0], size[1], TARGET_FORMATS[source])
                 component.set_editor_property("texture_target", target)
-        set_exposure(self.captures["rgb"], camera["exposure_ev100"])
         self.size = size
+        if frame["ambient_nits"] != self.ambient_nits:
+            nits = frame["ambient_nits"]
+            self.sky_material.set_vector_parameter_value("Radiance", unreal.LinearColor(nits, nits, nits, 1.0))
+            self.sky_light.recapture_sky()  # happens on the next engine tick, before the capture request arrives
+            self.ambient_nits = nits
+
+    def _sky(self):
+        sphere = self.actors.spawn_actor_from_class(unreal.StaticMeshActor, unreal.Vector())
+        component = sphere.static_mesh_component
+        component.set_static_mesh(unreal.load_asset(SPHERE))
+        component.set_cast_shadow(False)  # it encloses the sun
+        sphere.set_actor_scale3d(unreal.Vector(*[SKY_RADIUS_CM / 50] * 3))
+        material = component.create_dynamic_material_instance(0, sky_material())
+        light = self.actors.spawn_actor_from_class(unreal.SkyLight, unreal.Vector()).light_component
+        light.set_mobility(unreal.ComponentMobility.MOVABLE)
+        light.set_editor_property("source_type", unreal.SkyLightSourceType.SLS_CAPTURED_SCENE)
+        light.set_editor_property("lower_hemisphere_is_black", False)  # even fill, as in the other engines
+        return material, light
 
     def _place(self, obj):
         actor = self.actors.spawn_actor_from_class(unreal.StaticMeshActor, unreal.Vector())
@@ -201,17 +225,17 @@ class SimkitServer:
         self._set_materials(lambda materials, id_material: [id_material] * len(materials))
         self.captures["instances"].capture_scene()
         self._set_materials(lambda materials, id_material: materials)
-        rgb = self._read("rgb", unreal.RenderingLibrary.read_render_target)
+        rgb = self._read("rgb", unreal.RenderingLibrary.read_render_target_raw)
         depth = self._read("depth", unreal.RenderingLibrary.read_render_target_raw)
         ids = self._read("instances", unreal.RenderingLibrary.read_render_target)
         payload = (
-            bytes(value for color in rgb for value in (color.r, color.g, color.b))
+            struct.pack(f"<{3 * len(rgb)}f", *(value for color in rgb for value in (color.r, color.g, color.b)))
             + struct.pack(f"<{len(depth)}f", *(sample.r for sample in depth))
             + struct.pack(f"<{len(ids)}H", *(color.r + 256 * color.g for color in ids))
         )
         return {
             "buffers": [
-                {"name": "rgb", "dtype": "uint8", "shape": [height, width, 3]},
+                {"name": "rgb", "dtype": "float32", "shape": [height, width, 3]},
                 {"name": "depth", "dtype": "float32", "shape": [height, width]},
                 {"name": "instances", "dtype": "uint16", "shape": [height, width]},
             ],
@@ -229,15 +253,6 @@ class SimkitServer:
         return samples
 
 
-def set_exposure(component, ev100):
-    """Unreal's manual exposure, 1 / (1.2 * 2^EV100), applied as a color gain."""
-    gain = 1.0 / (1.2 * 2.0 ** ev100)
-    settings = component.get_editor_property("post_process_settings")
-    settings.set_editor_property("override_color_gain", True)
-    settings.set_editor_property("color_gain", unreal.Vector4(gain, gain, gain, 1.0))
-    component.set_editor_property("post_process_settings", settings)
-
-
 def transform(message, scale=1.0):
     x, y, z, w = message["rotation"]
     return unreal.Transform(unreal.Vector(*message["position"]), unreal.Quat(x, y, z, w).rotator(), unreal.Vector(scale, scale, scale))
@@ -249,6 +264,18 @@ def id_material():
     color = unreal.MaterialEditingLibrary.create_material_expression(material, unreal.MaterialExpressionVectorParameter)
     color.set_editor_property("parameter_name", "Id")
     unreal.MaterialEditingLibrary.connect_material_property(color, "", unreal.MaterialProperty.MP_BASE_COLOR)
+    unreal.MaterialEditingLibrary.recompile_material(material)
+    return material
+
+
+def sky_material():
+    """An unlit, two-sided material that glows with its "Radiance" vector parameter, in nits."""
+    material = unreal.AssetToolsHelpers.get_asset_tools().create_asset("M_SimkitSky", CONTENT_DIR, unreal.Material, unreal.MaterialFactoryNew())
+    material.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_UNLIT)
+    material.set_editor_property("two_sided", True)
+    radiance = unreal.MaterialEditingLibrary.create_material_expression(material, unreal.MaterialExpressionVectorParameter)
+    radiance.set_editor_property("parameter_name", "Radiance")
+    unreal.MaterialEditingLibrary.connect_material_property(radiance, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
     unreal.MaterialEditingLibrary.recompile_material(material)
     return material
 
