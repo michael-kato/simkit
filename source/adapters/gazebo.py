@@ -25,7 +25,7 @@ import numpy as np
 from scipy.spatial.transform import Rotation
 
 from ..frames import GAZEBO, GLTF
-from .base import PRIMITIVE_CUBE, Capture, EngineAdapter, launch_engine, relative_intensity, resolve_asset, stop_engine
+from .base import AMBIENT, PRIMITIVE_CUBE, Capture, EngineAdapter, launch_engine, relative_intensity, resolve_asset, stop_engine
 
 WORLD = "simkit"
 STEP_S = 0.05
@@ -161,7 +161,7 @@ def world_sdf(camera):
     <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics"/>
     <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands"/>
     <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors"><render_engine>ogre2</render_engine></plugin>
-    <scene><ambient>0.3 0.3 0.3 1</ambient><background>0.6 0.6 0.6 1</background><grid>false</grid></scene>
+    <scene><ambient>{AMBIENT} {AMBIENT} {AMBIENT} 1</ambient><background>0.6 0.6 0.6 1</background><grid>false</grid></scene>
     <model name="simkit_camera">
       <link name="link">
         <gravity>false</gravity>

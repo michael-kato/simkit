@@ -14,6 +14,9 @@ PRIMITIVE_CUBE = "primitive:cube"  # a 1 m cube centered on its pose, times Obje
 # Engines without physical light units get intensities relative to this
 # illuminance: a sun of REFERENCE_LUX, or a lamp giving REFERENCE_LUX at 1 m, has intensity 1.
 REFERENCE_LUX = 1000.0
+# Scenarios have no ambient term, so every engine adds the same fill light:
+# this fraction of REFERENCE_LUX, arriving evenly from all directions.
+AMBIENT = 0.3
 
 
 @dataclass

@@ -29,7 +29,7 @@ namespace Simkit
             Camera.nearClipPlane = 0.05f;
             Camera.farClipPlane = 200f;
             RenderSettings.ambientMode = AmbientMode.Flat;
-            RenderSettings.ambientLight = new Color(0.3f, 0.3f, 0.3f);
+            RenderSettings.ambientLight = new Color(0.3f, 0.3f, 0.3f);  // AMBIENT in source/adapters/base.py
         }
 
         public async Awaitable Apply(FrameMessage frame)
